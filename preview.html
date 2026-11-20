@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hisham Alpha — Preview</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; background: #25282e; color: #f4f2ec; font-family: Inter, "Segoe UI", sans-serif; }
+  body { min-height: 100vh; }
+  .toolbar { position: relative; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 66px; padding: 12px 22px; background: #30343b; border-bottom: 1px solid rgba(244,242,236,.12); }
+  .brand { font-size: 13px; font-weight: 600; letter-spacing: .02em; }
+  .switcher { display: flex; gap: 6px; padding: 4px; border: 1px solid rgba(244,242,236,.14); border-radius: 10px; background: rgba(0,0,0,.16); }
+  .switcher button { border: 0; border-radius: 7px; padding: 8px 13px; color: rgba(244,242,236,.68); background: transparent; font: inherit; font-size: 12px; cursor: pointer; }
+  .switcher button[aria-pressed="true"] { color: #22262d; background: #d6e6f4; }
+  .stage { min-height: calc(100vh - 66px); display: flex; justify-content: center; align-items: center; padding: 10px; }
+  .viewport { width: 100%; height: calc(100vh - 86px); border: 0; border-radius: 5px; background: #3b3e44; box-shadow: 0 18px 60px rgba(0,0,0,.3); }
+  .stage.is-mobile { padding: 10px 14px 20px; }
+  .stage.is-mobile .viewport { width: min(390px, calc((100vh - 126px) * .462)); height: min(844px, calc(100vh - 126px)); border: 7px solid #111318; border-radius: 28px; box-shadow: 0 22px 72px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.16); }
+  @media (max-width: 520px) {
+    .toolbar { padding-inline: 13px; }
+    .brand { font-size: 11px; }
+    .switcher button { padding: 8px 9px; font-size: 11px; }
+    .viewport { height: calc(100vh - 82px); }
+  }
+</style>
+</head>
+<body>
+  <header class="toolbar">
+    <div class="brand">Hisham Alpha · Preview</div>
+    <nav class="switcher" aria-label="Preview size">
+      <button type="button" data-mode="desktop" aria-pressed="true">Desktop</button>
+      <button type="button" data-mode="mobile" aria-pressed="false">Mobile</button>
+    </nav>
+  </header>
+  <main class="stage" id="stage">
+    <iframe class="viewport" title="Portfolio website preview" src="./index.html" allow="autoplay"></iframe>
+  </main>
+  <script>
+    const stage = document.getElementById('stage');
+    const buttons = [...document.querySelectorAll('[data-mode]')];
+    buttons.forEach(button => button.addEventListener('click', () => {
+      const mobile = button.dataset.mode === 'mobile';
+      stage.classList.toggle('is-mobile', mobile);
+      buttons.forEach(item => item.setAttribute('aria-pressed', String(item === button)));
+    }));
+  </script>
+</body>
+</html>
