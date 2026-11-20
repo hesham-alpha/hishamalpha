@@ -216,17 +216,30 @@
   }
 
   /* ── INTRO TEXT: large particle lettering for the Home hero ── */
-  function makeIntroText() {
+  function makeIntroText(tracking) {
     var S = new Shape();
     var canvas = document.createElement('canvas');
     canvas.width = 1920; canvas.height = 680;
     var ctx = canvas.getContext('2d', { willReadFrequently: true });
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = '#fff';
+    function drawLine(text, y) {
+      if (!tracking) { ctx.fillText(text, 960, y); return; }
+      var letters = Array.from(text);
+      var widths = letters.map(function (letter) { return ctx.measureText(letter).width; });
+      var width = widths.reduce(function (sum, advance) { return sum + advance; }, 0)
+        + (letters.length - 1) * tracking;
+      var x = 960 - width / 2;
+      letters.forEach(function (letter, index) {
+        ctx.fillText(letter, x + widths[index] / 2, y);
+        x += widths[index] + tracking;
+      });
+      S.textWidth = Math.max(S.textWidth || 0, width * 0.0075);
+    }
     ctx.font = '500 150px "Instrument Sans", Arial, sans-serif';
-    ctx.fillText('Hey, I am', 960, 250);
+    drawLine('Hey, I am', 250);
     ctx.font = '600 230px "Instrument Sans", Arial, sans-serif';
-    ctx.fillText('Hisham Alpha', 960, 545);
+    drawLine('Hisham Alpha', 545);
 
     var pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
     var samples = [];
@@ -545,7 +558,9 @@
       code: makeCodeMark(), dust: makeCloud(9, -9, -1, 0.55), codeBreak: makeCloud(12.5, -9, 2, 1.0, 1.5), logo: makeLogo()
     };
     var shapeSeed = seed;
-    shapes.intro = makeIntroText();
+    var desktopIntro = makeIntroText();
+    var portraitIntro = null;
+    shapes.intro = desktopIntro;
     seed = shapeSeed;
 
     /* geometry */
@@ -654,6 +669,18 @@
 
     function resize() {
       W = canvas.clientWidth || window.innerWidth; H = canvas.clientHeight || window.innerHeight;
+      if (W < H && !portraitIntro) {
+        var previousSeed = seed;
+        seed = shapeSeed;
+        portraitIntro = makeIntroText(23);
+        seed = previousSeed;
+      }
+      var intro = W < H ? portraitIntro : desktopIntro;
+      if (shapes.intro !== intro) {
+        shapes.intro = intro;
+        if (curA === 'intro') curA = null;
+        if (curB === 'intro') curB = null;
+      }
       renderer.setSize(W, H, false);
       uniforms.uAspect.value = dustUniforms.uAspect.value = W / Math.max(1, H);
       uniforms.uDensity.value = dustUniforms.uDensity.value = W < H ? 0.44 : 1.0;
@@ -664,6 +691,10 @@
       camera.fov = W < H ? Math.min(75, baseFov * (H / W) * 0.9) : baseFov;
       camera.updateProjectionMatrix();
       visH = 2 * 10 * Math.tan(camera.fov * Math.PI / 360);
+      if (reduced) {
+        update(0, clock.elapsedTime);
+        renderer.render(scene, camera);
+      }
     }
 
     function keyAt(t) {
@@ -695,7 +726,9 @@
         var cloudY = shape === 'dust' ? 1.15 : 1.4;
         dummy.scale.set(key.s * cloudX, key.s * cloudY, key.s * 0.72);
       } else {
-        var narrowScale = shape === 'intro' ? 0.46 : 0.72;
+        var narrowScale = narrow && shape === 'intro'
+          ? Math.min(0.46, (visH * W / H * 0.91) / shapes.intro.textWidth)
+          : 0.72;
         dummy.scale.setScalar(key.s * (narrow ? narrowScale : 1));
       }
       dummy.updateMatrix();
@@ -715,6 +748,8 @@
       var t = Tsm;
       var i = keyAt(t), a = KEYS[i], b = KEYS[i + 1];
       var f = Math.max(0, Math.min(1, (t - a.t) / (b.t - a.t)));
+      var introWeight = lerp(a.shape === 'intro' ? 1 : 0, b.shape === 'intro' ? 1 : 0, smooth(f));
+      uniforms.uDensity.value = W < H ? 0.44 - 0.10 * introWeight : 1;
 
       for (var s in SHAPE_META) spinAcc[s] += SHAPE_META[s].spin * dt;
 
@@ -739,6 +774,7 @@
         uniforms.uSizeMul.value = lerp(SHAPE_META[a.shape].size, SHAPE_META[b.shape].size, e);
         uniforms.uAmp.value = Math.max(SHAPE_META[a.shape].amp, SHAPE_META[b.shape].amp);
       }
+      if (W < H) uniforms.uSizeMul.value *= 1 - 0.22 * introWeight;
       uniforms.uTime.value = time;
       dustUniforms.uTime.value = time * 0.6;
 
